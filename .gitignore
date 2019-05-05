@@ -8,3 +8,4 @@ dist
 *.log
 config.json
 state.json
+macros/
