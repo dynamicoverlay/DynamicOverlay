@@ -1,0 +1,1 @@
+{"name":"Fun","actions":[{"type":"moveCamera","value":"bottom_right"},{"type":"delay","value":"2000"},{"type":"moveCamera","value":"top_right"},{"type":"delay","value":"2000"},{"type":"moveCamera","value":"top_left"},{"type":"delay","value":"2000"},{"type":"moveCamera","value":"center"},{"type":"delay","value":"2000"},{"type":"moveCamera","value":"bottom_left"}]}

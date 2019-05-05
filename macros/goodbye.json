@@ -1,0 +1,1 @@
+{"name":"Goodbye","actions":[{"type":"backdrop","value":{"type":"update-text","value":""}},{"type":"backdrop","value":{"type":"slide-in"}},{"type":"moveCamera","value":"center"},{"type":"scaleUp","value":700}]}
