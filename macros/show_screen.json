@@ -1,1 +1,0 @@
-{"name":"Show Screen","actions":[{"type":"backdrop","value":{"type":"slide-out"}},{"type":"scaleUp","value":300},{"type":"moveCamera","value":"bottom_left"},{"type":"volume","value":50},"show"]}

@@ -1,1 +1,0 @@
-{"name":"Setup","actions":[{"type":"backdrop","value":{"type":"update-text","value":"Starting Soon"}},{"type":"backdrop","value":{"type":"slide-in"}},"hide",{"type":"moveCamera","value":"center"},{"type":"scaleUp","value":700},{"type":"volume","value":100}]}
