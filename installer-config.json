@@ -1,0 +1,8 @@
+{
+    "dest": "dist/installers/",
+    "icon": "icon.ico",
+    "tags": [
+      "Utility"
+    ],
+    "src": ".\\dist\\builds\\DynamicOverlay-win32-x64\\"
+  }

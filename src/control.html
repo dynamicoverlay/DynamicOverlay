@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>DynamicOverlay</title>
+    <link rel="stylesheet" href="/assets/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/all.css">
+    <link rel="stylesheet" href="/assets/dark.min.css" id="dark">
+    <style>
+        body {
+            background-color: #222;
+            transition: all .5s;
+        }
+
+        .light {
+            background-color: #fff;
+        }
+
+        .light-red {
+            background-color: rgba(255, 0, 0, 0.4);
+        }
+
+        .fa-rotate-n45 {
+            transform: rotate(-45deg);
+        }
+
+        .fa-rotate-45 {
+            transform: rotate(45deg);
+        }
+
+        .top-left {
+            position: absolute;
+        }
+
+        .top-right {
+            position: absolute;
+            right: 0;
+        }
+
+        .bottom-right {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+        }
+
+        .bottom-left {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+        }
+
+        .center {
+            position: absolute;
+            left: 129px;
+            bottom: 76px;
+        }
+
+        .position-box {
+            position: relative;
+            width: 300px;
+            height: 200px;
+        }
+
+        .position-box a {
+            color: #000;
+        }
+
+        .pos-anchor {
+            cursor: pointer;
+        }
+
+        .pos-anchor.active {
+            color: #2980b9;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #change_layout {
+            position: absolute;
+            z-index: 100;
+            bottom: 20px;
+            right: 5px;
+        }
+
+        #dark_button {
+            position: absolute;
+            z-index: 100;
+            bottom: 100px;
+            right: 5px;
+        }
+
+        .btn-circle {
+            width: 30px;
+            height: 30px;
+            padding: 6px 0px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.42857;
+        }
+
+        .btn-circle.btn-xl {
+            width: 70px;
+            height: 70px;
+            padding: 10px 16px;
+            border-radius: 35px;
+            font-size: 24px;
+            line-height: 1.33;
+        }
+
+        .module-panel {
+            height: auto;
+            max-height: 500px;
+            width: 100%;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row mt-3">
+            <div class="col" id="startCol">
+
+            </div>
+            <div class="col">
+
+            </div>
+            <div class="col">
+
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title">Macros <i class="fas fa-caret-down fa-pull-right" data-toggle="collapse"
+                                data-target="#macros-card"></i></h5>
+                    </div>
+                    <div class="collapse show card-body" id="macros-card">
+                        <div class="btn-group">
+                            <button class="btn btn-danger" id="record-button"><i class="fas fa-circle"
+                                    id="record-icon"></i>
+                                Record</button>
+                            <button class="btn btn-success" id="refresh-button"><i class="fas fa-sync-alt"></i>
+                                Reload
+                                Macros</button>
+                        </div>
+                        <div class="input-group mb-3 mt-1">
+                            <input type="number" id="delay_amount" value="1000" class="form-control" />
+                            <div class="input-group-append">
+                                <button class="btn btn-success" id="delay-button"><i class="fas fa-plus"></i> Add
+                                    Delay</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-warning" id="clear-button"><i class="fas fa-trash"></i> Clear
+                            Actions</button>
+                        <div class="input-group mb-3 mt-1" id="save-field">
+                            <input type="text" id="macro_name" placeholder="Macro Name" class="form-control" />
+                            <div class="input-group-append">
+                                <button class="btn btn-success" id="save-button"><i class="fas fa-save"></i> Save as
+                                    macro</button>
+                            </div>
+                        </div>
+                        <div class="row hidden" id="recorded">
+                            <div class="col">
+                                <h3>Recorded Actions</h3>
+                                <ul id="actions">
+
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <h3>Macros</h3>
+                                <ul id="macros">
+
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+
+            </div>
+            <div class="col">
+            </div>
+        </div>
+    </div>
+    <script src="/assets/jquery-3.2.1.min.js" crossorigin="anonymous">
+    </script>
+    <script src="/assets/bootstrap.min.js" crossorigin="anonymous">
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+        let dark = true,
+            edit = false,
+            flasher = -1,
+            currentIcon = "solid";
+        var socket = io();
+        socket.on('connect', () => {
+            socket.emit('ready', 'panel');
+        });
+        socket.on('loadPanels', async (panels) => {
+            let promises = [];
+
+            await panels.forEach((panel) => {
+                let htmlName = panel.name.toLowerCase().replace(/\s/g, '-');
+                document.getElementById('startCol').innerHTML += `
+                    <div class="card mt-3" style="min-width: 100%">
+                        <div class="card-header">
+                            <h5 class="card-heading">${panel.name} <i class="fas fa-caret-down fa-pull-right"
+                                    data-toggle="collapse" data-target="#${htmlName}"></i></h5>
+                        </div>
+                        <div class="collapse show card-body" id="${htmlName}">
+                            <iframe frameborder="0" class="module-panel" scrolling="no" src="http://localhost:3001/modules/${panel.file}" id="${htmlName}-frame">
+                        </div>
+                    </div>`
+                console.log(htmlName + " has been added");
+            });
+            document.querySelectorAll('.module-panel').forEach((panel) => {
+                promises.push(new Promise((res, rej) => {
+                    panel.addEventListener("load", () => {
+                        console.log(panel.id + " has loaded");
+                        const sheets = document.styleSheets;
+                        for (let sheet of sheets) {
+                            if (sheet.href && sheet.type === 'text/css') {
+                                const link = document.createElement('link')
+                                link.href = sheet.href
+                                link.rel = 'stylesheet'
+                                panel.contentDocument.body.appendChild(
+                                    link);
+                            }
+                        }
+                        panel.style = "height: " + panel.contentDocument
+                            .body.offsetHeight + "px";
+                        const style = document.createElement("style");
+                        style.innerHTML =
+                            `body {background-color: rgba(0, 0, 0, 0);}`
+                        panel.contentDocument.body.appendChild(style)
+                        const script = document.createElement("script");
+                        script.type = "text/javascript";
+                        script.innerHTML =
+                            "function sendSocket(socketMessage, data){window.parent.postMessage({message: 'sendSocket', value: {message: socketMessage, value: data}})}";
+                        panel.contentDocument.body.appendChild(script)
+                        res();
+                    })
+                }))
+            })
+            await Promise.all(promises)
+            socket.emit('sendState');
+        });
+        socket.on('spotifyAuth', () => {
+            document.querySelectorAll("iframe").forEach((iframe) => {
+                iframe.contentWindow.postMessage({
+                    message: "fromSocket",
+                    value: {
+                        message: "spotifyAuth"
+                    }
+                })
+            })
+        })
+        socket.on('closeSAuth', () => {
+            document.querySelectorAll("iframe").forEach((iframe) => {
+                iframe.contentWindow.postMessage({
+                    message: "fromSocket",
+                    value: {
+                        message: "closeSAuth"
+                    }
+                })
+            })
+        })
+        socket.on('updateState', (state) => {
+            document.querySelectorAll("iframe").forEach((iframe) => {
+                iframe.contentWindow.postMessage({
+                    message: "fromSocket",
+                    value: {
+                        message: "updateState",
+                        value: state
+                    }
+                })
+            })
+            if (state.macros.recording) {
+                document.body.classList.add("light-red")
+                document.getElementById("record-icon").className = "fas fa-circle";
+                if (flasher === -1) {
+                    flasher = setInterval(() => {
+                        if (currentIcon === "solid") {
+                            document.getElementById("record-icon").className = "far fa-circle";
+                            currentIcon = "regular";
+                        } else {
+                            document.getElementById("record-icon").className = "fas fa-circle";
+                            currentIcon = "solid";
+                        }
+                    }, 1000);
+                }
+            } else {
+                document.body.classList.remove("light-red")
+                document.getElementById("record-icon").className = "far fa-circle";
+                clearInterval(flasher);
+                flasher = -1;
+            }
+
+            if (state.macros.recordedActions.length > 0) {
+                if (document.getElementById("recorded").classList.contains("hidden")) {
+                    document.getElementById("recorded").classList.remove("hidden")
+                }
+                if (document.getElementById("clear-button").classList.contains("hidden")) {
+                    document.getElementById("clear-button").classList.remove("hidden")
+                }
+                if (document.getElementById("save-field").classList.contains("hidden")) {
+                    document.getElementById("save-field").classList.remove("hidden")
+                }
+                let listItems = "";
+                state.macros.recordedActions.forEach((action) => {
+                    listItems += "<li>" + JSON.stringify(action) + "</li>"
+                })
+                document.getElementById("actions").innerHTML = listItems;
+            } else {
+                if (!document.getElementById("recorded").classList.contains("hidden")) {
+                    document.getElementById("recorded").classList.add("hidden")
+                }
+                if (!document.getElementById("clear-button").classList.contains("hidden")) {
+                    document.getElementById("clear-button").classList.add("hidden")
+                }
+                if (!document.getElementById("save-field").classList.contains("hidden")) {
+                    document.getElementById("save-field").classList.add("hidden")
+                }
+            }
+            if (state.macros.macros.length > 0) {
+                let listItems = "";
+                state.macros.macros.forEach((macro) => {
+                    listItems += "<li>" + macro.name +
+                        " - <a href='#' class='macro-action' data-action='run' data-name='" + macro
+                        .name +
+                        "'>Run</a> - <a href='#'  class='macro-action' data-action='delete' data-name='" +
+                        macro.name + "'>Delete</a></li>"
+                })
+                document.getElementById("macros").innerHTML = listItems;
+
+                [...document.getElementsByClassName("macro-action")].forEach((e) => {
+                    e.addEventListener("click", (e) => {
+                        if (e.target.dataset.action === "run") {
+                            socket.emit('runMacro', e.target.dataset.name);
+                        } else if (e.target.dataset.action === "delete") {
+                            socket.emit('deleteMacro', e.target.dataset.name);
+                        }
+                    })
+                });
+            }
+        })
+        document.getElementById("refresh-button").addEventListener("click", () => {
+            socket.emit("refreshMacros");
+        })
+        document.getElementById("record-button").addEventListener("click", () => {
+            socket.emit("toggleRecord");
+        })
+        document.getElementById("clear-button").addEventListener("click", () => {
+            socket.emit("clearRecording");
+        })
+        document.getElementById("delay-button").addEventListener("click", () => {
+            socket.emit("doAction", {
+                type: "delay",
+                value: document.getElementById("delay_amount").value
+            });
+        })
+        document.getElementById("save-button").addEventListener("click", () => {
+            socket.emit("saveRecording", document.getElementById("macro_name").value);
+        })
+        var openWindow;
+        window.addEventListener('message', (e) => {
+            if (e.data.message === "sendSocket") {
+                let messageToSend = e.data.value;
+                socket.emit(messageToSend.message, messageToSend.value);
+            } else if(e.data.message === "openWindow"){
+                openWindow = window.open(e.data.value);
+            } else if(e.data.message === "closeWindow"){
+                if(openWindow !== null){
+                    openWindow.close();
+                    openWindow = null;
+                }
+            }
+        })
+        socket.on('toggleDarkMode', () => {
+            if (dark) {
+                dark = false;
+                document.getElementById("dark").href = "";
+                document.body.classList.add("light");
+            } else {
+                dark = true;
+                document.getElementById("dark").href = "/assets/dark.min.css";
+                document.body.classList.remove("light");
+            }
+        })
+        socket.on('toggleEditMode', () => {
+            if (edit) {
+                swappable.destroy();
+                edit = false;
+            } else {
+                edit = true;
+                swappable = new Draggable.Sortable(
+                    document.querySelectorAll('.col'), {
+                        draggable: '.card',
+                        cancel: ".fas",
+                        delay: 0,
+                        mirror: {
+                            appendTo: '.card, .col'
+                        }
+                    }
+                );
+            }
+        })
+    </script>
+    <script type="text/javascript">
+        // const copyToClipboard = str => {
+        //     const el = document.createElement('textarea'); // Create a <textarea> element
+        //     el.value = str; // Set its value to the string that you want copied
+        //     el.setAttribute('readonly', ''); // Make it readonly to be tamper-proof
+        //     el.style.position = 'absolute';
+        //     el.style.left = '-9999px'; // Move outside the screen to make it invisible
+        //     document.body.appendChild(el); // Append the <textarea> element to the HTML document
+        //     const selected =
+        //         document.getSelection().rangeCount > 0 // Check if there is any content selected previously
+        //         ?
+        //         document.getSelection().getRangeAt(0) // Store selection if found
+        //         :
+        //         false; // Mark as false to know no selection existed before
+        //     el.select(); // Select the <textarea> content
+        //     document.execCommand('copy'); // Copy - only works as a result of a user action (e.g. click events)
+        //     document.body.removeChild(el); // Remove the <textarea> element
+        //     if (selected) { // If a selection existed before copying
+        //         document.getSelection().removeAllRanges(); // Unselect everything on the HTML document
+        //         document.getSelection().addRange(selected); // Restore the original selection
+        //     }
+        // };
+        // let edit = false;
+        // let swappable;
+        // let dark = true;
+        // document.getElementById("copy").addEventListener("click", () => {
+        //     copyToClipboard("http://localhost:3000/view");
+        // });
+        // let currentState = {};
+        // let flasher = -1;
+        // let newwindow;
+        // let currentIcon = "solid";
+
+        // socket.on('toggleDarkMode', () => {
+        //     if(dark){
+        //         dark = false;
+        //         document.getElementById("dark").href = "";
+        //         document.body.classList.add("light");
+        //     }else{
+        //         dark = true;
+        //         document.getElementById("dark").href = "https://bootswatch.com/4/darkly/bootstrap.min.css";
+        //         document.body.classList.remove("light");
+        //     }
+        // })
+        // socket.on('toggleEditMode', () => {
+        //     if (edit) {
+        //         swappable.destroy();
+        //         edit = false;
+        //     } else {
+        //         edit = true;
+        //         swappable = new Draggable.Sortable(
+        //             document.querySelectorAll('.col'), {
+        //                 draggable: '.card',
+        //                 cancel: ".fas",
+        //                 delay: 0,
+        //                 mirror: {
+        //                     appendTo: '.card, .col'
+        //                 }
+        //             }
+        //         );
+        //     }
+        // })
+        // socket.on('spotifyAuth', () => {
+        //     newwindow = window.open('http://localhost:3000/spotify/login', '_blank', 'nodeIntegration=no');
+        //     if (window.focus) {
+        //         newwindow.focus()
+        //     }
+        // })
+        // socket.on('closeSAuth', () => {
+        //     if (newwindow !== undefined) {
+        //         newwindow.close();
+        //     }
+        // });
+        // socket.on('receiveState', (state) => {
+        //     currentState = state;
+        //     if (!state.recording) {
+        //         document.getElementById("scale").value = state.scale;
+        //         document.getElementById("text").value = state.backdrop.text;
+        //         document.getElementById("position").value = state.position;
+        //         [...document.getElementsByClassName("pos-anchor")].forEach((e) => {
+        //             if (e.id === state.position) {
+        //                 e.classList.add("active");
+        //             } else {
+        //                 e.classList.remove("active");
+        //             }
+        //         })
+        //     }
+        //     if (state.recording) {
+        //         document.body.classList.add("light-red")
+        //         document.getElementById("record-icon").className = "fas fa-circle";
+        //         if (flasher === -1) {
+        //             flasher = setInterval(() => {
+        //                 if (currentIcon === "solid") {
+        //                     document.getElementById("record-icon").className = "far fa-circle";
+        //                     currentIcon = "regular";
+        //                 } else {
+        //                     document.getElementById("record-icon").className = "fas fa-circle";
+        //                     currentIcon = "solid";
+        //                 }
+        //             }, 1000);
+        //         }
+        //     } else {
+        //         document.body.classList.remove("light-red")
+        //         document.getElementById("record-icon").className = "far fa-circle";
+        //         clearInterval(flasher);
+        //         flasher = -1;
+        //     }
+        //     if (state.recordedActions.length > 0) {
+        //         if (document.getElementById("recorded").classList.contains("hidden")) {
+        //             document.getElementById("recorded").classList.remove("hidden")
+        //         }
+        //         if (document.getElementById("clear-button").classList.contains("hidden")) {
+        //             document.getElementById("clear-button").classList.remove("hidden")
+        //         }
+        //         if (document.getElementById("save-field").classList.contains("hidden")) {
+        //             document.getElementById("save-field").classList.remove("hidden")
+        //         }
+        //         let listItems = "";
+        //         state.recordedActions.forEach((action) => {
+        //             listItems += "<li>" + JSON.stringify(action) + "</li>"
+        //         })
+        //         document.getElementById("actions").innerHTML = listItems;
+        //     } else {
+        //         if (!document.getElementById("recorded").classList.contains("hidden")) {
+        //             document.getElementById("recorded").classList.add("hidden")
+        //         }
+        //         if (!document.getElementById("clear-button").classList.contains("hidden")) {
+        //             document.getElementById("clear-button").classList.add("hidden")
+        //         }
+        //         if (!document.getElementById("save-field").classList.contains("hidden")) {
+        //             document.getElementById("save-field").classList.add("hidden")
+        //         }
+        //     }
+        //     if (state.macros.length > 0) {
+        //         let listItems = "";
+        //         state.macros.forEach((macro) => {
+        //             listItems += "<li>" + macro.name +
+        //                 " - <a href='#' class='macro-action' data-action='run' data-name='" + macro
+        //                 .name +
+        //                 "'>Run</a> - <a href='#'  class='macro-action' data-action='delete' data-name='" +
+        //                 macro.name + "'>Delete</a></li>"
+        //         })
+        //         document.getElementById("macros").innerHTML = listItems;
+
+        //         [...document.getElementsByClassName("macro-action")].forEach((e) => {
+        //             e.addEventListener("click", (e) => {
+        //                 if (e.target.dataset.action === "run") {
+        //                     socket.emit('runMacro', e.target.dataset.name);
+        //                 } else if (e.target.dataset.action === "delete") {
+        //                     socket.emit('deleteMacro', e.target.dataset.name);
+        //                 }
+        //             })
+        //         });
+        //     }
+        //     if (state.spotify) {
+        //         if(state.spotify.image){
+        //             document.getElementById("song_image").src = state.spotify.image;
+        //         }
+        //         document.getElementById("current_song").innerHTML = state.spotify.song + " by " + state.spotify
+        //             .artist;
+        //         if (!state.recording) {
+        //             document.getElementById("volume").value = state.spotify.volume;
+        //         }
+        //     }
+        //     if (state.events) {
+        //         let listLI = "";
+        //         state.events.forEach((event) => {
+        //             console.log(event);
+        //             listLI += "<li>" + event.username + (event.type === "follow" ? ' followed' :
+        //                 ' did something') + "</li>";
+        //         })
+        //         document.getElementById("events").innerHTML = listLI;
+        //     }
+        // });
+        // [...document.getElementsByClassName("pos-anchor")].forEach((e) => {
+        //     e.addEventListener("click", (e) => {
+        //         socket.emit('doAction', {
+        //             type: 'moveCamera',
+        //             value: e.target.id
+        //         });
+        //     })
+        // });
+        // document.getElementById("refresh-button").addEventListener("click", () => {
+        //     socket.emit("refreshMacros");
+        // })
+        // document.getElementById("record-button").addEventListener("click", () => {
+        //     socket.emit("record", !currentState.recording);
+        // })
+        // document.getElementById("clear-button").addEventListener("click", () => {
+        //     socket.emit("clearRecording");
+        // })
+        // document.getElementById("delay-button").addEventListener("click", () => {
+        //     socket.emit("doAction", {
+        //         type: "delay",
+        //         value: document.getElementById("delay_amount").value
+        //     });
+        // })
+        // document.getElementById("save-button").addEventListener("click", () => {
+        //     socket.emit("saveRecording", document.getElementById("macro_name").value);
+        // })
+        // document.getElementById("hide_cam").addEventListener("click", () => {
+        //     socket.emit('doAction', 'hide');
+        // });
+        // document.getElementById("show_cam").addEventListener("click", () => {
+        //     socket.emit('doAction', 'show');
+        // });
+        // document.getElementById("set_volume").addEventListener("click", () => {
+        //     socket.emit('doAction', {
+        //         type: "volume",
+        //         value: new Number(document.getElementById("volume").value)
+        //     });
+        // });
+        // document.getElementById("scale").addEventListener("keydown", (e) => {
+        //     if (e.keyCode === 13) {
+        //         socket.emit('doAction', {
+        //             type: 'scaleUp',
+        //             value: new Number(document.getElementById("scale").value)
+        //         });
+        //     }
+        // })
+        // document.getElementById("scale_camera").addEventListener("click", () => {
+        //     socket.emit('doAction', {
+        //         type: 'scaleUp',
+        //         value: new Number(document.getElementById("scale").value)
+        //     });
+        // });
+        // document.getElementById("move_camera").addEventListener("click", () => {
+        //     socket.emit('doAction', {
+        //         type: 'moveCamera',
+        //         value: document.getElementById("position").value
+        //     });
+        // });
+        // document.getElementById("show_backdrop").addEventListener("click", () => {
+        //     socket.emit('doAction', {
+        //         type: 'backdrop',
+        //         value: {
+        //             type: 'slide-in'
+        //         }
+        //     });
+        // });
+        // document.getElementById("hide_backdrop").addEventListener("click", () => {
+        //     socket.emit('doAction', {
+        //         type: 'backdrop',
+        //         value: {
+        //             type: 'slide-out'
+        //         }
+        //     });
+        // });
+        // document.getElementById("text").addEventListener("keydown", (e) => {
+        //     if (e.keyCode === 13) {
+        //         socket.emit('doAction', {
+        //             type: 'backdrop',
+        //             value: {
+        //                 type: 'update-text',
+        //                 value: document.getElementById("text").value
+        //             }
+        //         });
+        //     }
+        // })
+        // document.getElementById("update_text").addEventListener("click", () => {
+        //     socket.emit('doAction', {
+        //         type: 'backdrop',
+        //         value: {
+        //             type: 'update-text',
+        //             value: document.getElementById("text").value
+        //         }
+        //     });
+        // });
+    </script>
+</body>
+
+</html>

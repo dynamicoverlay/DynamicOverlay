@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Test</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Lato');
+
+        html {
+            width: 1920px;
+            height: 1080px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1920px;
+            height: 1080px;
+        }
+
+        video {
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-left: 25px;
+            margin-top: 25px;
+            transition: all 2s;
+        }
+
+        .border-wrap {
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            transition: all 2s;
+            transform: scale(0) rotate(-1000deg);
+        }
+
+        .show {
+            transform: scale(1) rotate(0);
+        }
+
+        .animate-out {
+            transform: scale(0) rotate(1000deg);
+        }
+
+        .backdrop {
+            background-color: #2980b9;
+            height: 1080px;
+            width: 1920px;
+            position: absolute;
+            top: -1080px;
+            transition: top 5s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-family: 'Lato', sans-serif;
+        }
+
+        .backdrop h1 {
+            font-size: 200px;
+        }
+
+        .backdrop.animate-in {
+            top: 0;
+        }
+
+        .module-graphic {
+            height: 1080px;
+            width: 1920px;
+            position: absolute;
+        }
+
+        .container {
+            height: 1080px;
+            width: 1920px;
+            position: absolute;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="container">
+
+    </div>
+    <!-- <div class="backdrop" id="backdrop">
+        <h1 id="backdrop-text">Be Right Back!</h1>
+    </div>
+    <div class="border-wrap" id="wrapper">
+        <video autoplay="true" id="videoElement" class="circle-video"></video>
+    </div> -->
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+        (function () {
+            var socket = io();
+            socket.on('connect', () => {
+                console.log("Connected!");
+                socket.emit("ready", "view");
+            })
+            socket.on('loadGraphics', async (graphics) => {
+                document.getElementById("container").innerHTML = "";
+                let promises = [];
+                await graphics.forEach((graphic) => {
+                    let htmlName = graphic.name.toLowerCase().replace(/\s/g, '-');
+                    let iFrame = document.createElement('iframe');
+                    iFrame.src = `http://localhost:3001/modules/${graphic.file}`;
+                    iFrame.frameBorder = 0;
+                    iFrame.scrolling = false;
+                    iFrame.id = `${htmlName}-frame`;
+                    iFrame.classList.add("module-graphic");
+                    document.getElementById("container").append(iFrame);
+                    promises.push(new Promise((res, rej) => {
+
+                        iFrame.addEventListener('load', () => {
+                            const style = document.createElement("style");
+                            style.innerHTML =
+                                `body {background-color: rgba(0, 0, 0, 0);}`
+                            iFrame.contentDocument.body.appendChild(style)
+                            const script = document.createElement("script");
+                            script.type = "text/javascript";
+                            script.innerHTML =
+                                "function sendSocket(socketMessage, data){window.parent.postMessage({message: 'sendSocket', value: {message: socketMessage, value: data}})}";
+                            iFrame.contentDocument.body.appendChild(script)
+                            res();
+                        })
+                    }))
+                });
+                await Promise.all(promises);
+                socket.emit('sendState');
+            });
+            socket.on('updateState', (state) => {
+                document.querySelectorAll("iframe").forEach((iframe) => {
+                    iframe.contentWindow.postMessage({
+                        message: "fromSocket",
+                        value: {
+                            message: "updateState",
+                            value: state
+                        }
+                    }, "*")
+                })
+            })
+        })();
+    </script>
+    <script type="text/javascript">
+        // var currentPosition = "bottom_left";
+        // var scale = 300;
+        // (function () {
+        //     var socket = io();
+        //     socket.on('connect', () => {
+        //         console.log('Connected!');
+        //         socket.emit("ready");
+        //     });
+        //     socket.on('receiveState', (state) => {
+        //         console.log(state);
+        //         currentPosition = state.position;
+        //         scale = state.scale;
+        //         scaleUp(scale);
+        //         if(state.visible){
+        //             document.getElementById("wrapper").classList.add("show");
+        //         }else{
+        //             document.getElementById("wrapper").classList.remove("show");
+        //         }
+        //         if(state.backdrop.visible){
+        //             document.getElementById("backdrop").classList.add("animate-in");
+        //         } else {
+        //             document.getElementById("backdrop").classList.remove("animate-in");
+        //         }
+        //         document.getElementById("backdrop-text").innerHTML = state.backdrop.text;
+        //     })
+        //     navigator.getUserMedia = navigator.getUserMedia ||
+        //         navigator.webkitGetUserMedia ||
+        //         navigator.mozGetUserMedia ||
+        //         navigator.msGetUserMedia;
+
+        //     if (!navigator.getUserMedia) {
+        //         return false;
+        //     }
+        //     var video = document.querySelector("#videoElement");
+
+        //     function getWebcam() {
+
+        //         navigator.getUserMedia({
+        //             video: true,
+        //             audio: false
+        //         }, function (stream) {
+        //             video.srcObject = stream;
+        //         }, function (e) {
+        //             console.error('Rejected!', e);
+        //         });
+        //     }
+
+        //     getWebcam();
+
+        // })()
+
+        // function scaleUp(newCircleSize) {
+        //     let wrap = newCircleSize + 50;
+        //     scale = newCircleSize;
+        //     document.getElementById("wrapper").style = generateCSS(newCircleSize, currentPosition);
+        //     document.getElementById("videoElement").style = "width: " + newCircleSize + "px; height: " + newCircleSize +
+        //         "px;";
+        // }
+
+        // function generateCSS(scale, position){
+        //     let css = "";
+        //     let wrap = scale + 50;
+        //     let bottom = 0;
+        //     let left = 0;
+        //     if(position === "center"){
+        //         bottom =  ((1080 - wrap) / 2);
+        //         left = ((1920 - wrap) / 2);
+        //     }else if(position === "bottom_left"){
+        //         bottom = 20;
+        //         left = 20;
+        //     }else if(position === "bottom_right"){
+        //         left = (1900 - wrap);
+        //         bottom = 20;
+        //     }else if(position === "top_left"){
+        //         left = 20;
+        //         bottom = (1060 - wrap);
+        //     }else if(position === "top_right"){
+        //         left = (1900  - wrap);
+        //         bottom = (1060 - wrap);
+        //     }
+        //     return "width: " + wrap + "px; height: " + wrap + "px; bottom: " + bottom + "px; left: " + left + "px;";
+        // }
+    </script>
+</body>
+
+</html>

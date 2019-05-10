@@ -1,10 +1,17 @@
 const {
     app,
     BrowserWindow,
-    Menu
+    Menu,
+    clipboard,
+    shell,
+    remote
 } = require('electron');
 
+const path = require('path');
+
 let mainApp = require('./express');
+
+const userPath = (app || remote.app).getPath('userData');
 
 let win
 
@@ -17,11 +24,37 @@ function createWindow() {
         },
         icon: __dirname + '/icon.ico'
     });
-    win.loadURL('http://localhost:3000/');
+    win.loadURL('http://localhost:3001/');
+    win.toggleDevTools();
     win.on('closed', () => {
         win = null
     })
     const menu = Menu.buildFromTemplate([{
+        label: 'File',
+        submenu: [
+            {
+                label: 'Copy View URL',
+                role: 'copyurl',
+                click: () => {
+                    clipboard.writeText("http://localhost:3001/view");
+                }
+            },
+            {
+                label: 'Open Macros Folder',
+                role: 'copyurl',
+                click: () => {
+                    shell.openItem(path.join(userPath, 'macros'))
+                }
+            },
+            {
+                label: 'Open Modules Folder',
+                role: 'copyurl',
+                click: () => {
+                    shell.openItem(path.join(userPath, 'modules'))
+                }
+            }
+        ]
+    },{
         label: 'Settings',
         submenu: [
             {
@@ -43,6 +76,11 @@ function createWindow() {
                 accelerator: 'CmdOrCtrl+R',
                 click (item, focusedWindow) {
                   if (focusedWindow) focusedWindow.reload()
+                }
+            },{
+                label: 'Toggle Dev Tools',
+                click (item, focusedWindow) {
+                  if (focusedWindow) focusedWindow.toggleDevTools()
                 }
             },
         ]

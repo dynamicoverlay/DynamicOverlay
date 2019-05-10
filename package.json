@@ -1,7 +1,7 @@
 {
   "name": "dynamicoverlay",
   "version": "1.0.0",
-  "description": "",
+  "description": "Dynamic Overlay",
   "main": "index.js",
   "dependencies": {
     "axios": "^0.18.0",
@@ -12,11 +12,14 @@
     "spotify-web-api-node": "^4.0.0"
   },
   "devDependencies": {
-    "electron": "^5.0.1"
+    "electron": "^5.0.1",
+    "electron-packager": "^13.1.1"
   },
   "scripts": {
-    "start": "electron ."
+    "start": "electron ./src",
+    "build": "rm -rf ./dist/builds/DynamicOverlay-win32-x64 && electron-packager ./src/ DynamicOverlay --out ./dist/builds/",
+    "installer": "electron-installer-windows --config installer-config.json"
   },
-  "author": "",
+  "author": "Rushmead",
   "license": "ISC"
 }
