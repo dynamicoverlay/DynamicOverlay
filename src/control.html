@@ -137,7 +137,7 @@
         </div>
         <div class="row mt-3">
             <div class="col">
-                <div class="card mt-3">
+                <div class="card mt-3" id="macros-card" draggable="true">
                     <div class="card-header">
                         <h5 class="card-title">Macros <i class="fas fa-caret-down fa-pull-right" data-toggle="collapse"
                                 data-target="#macros-card"></i></h5>
@@ -209,14 +209,13 @@
         });
         socket.on('loadPanels', async (panels) => {
             let promises = [];
-
-            await panels.forEach((panel) => {
+            panels.forEach((panel) => {
                 let htmlName = panel.name.toLowerCase().replace(/\s/g, '-');
                 document.getElementById('startCol').innerHTML += `
-                    <div class="card mt-3" style="min-width: 100%">
+                    <div class="card mt-3" style="min-width: 100%"  id="${htmlName}-card" draggable="true">
                         <div class="card-header">
-                            <h5 class="card-heading">${panel.name} <i class="fas fa-caret-down fa-pull-right"
-                                    data-toggle="collapse" data-target="#${htmlName}"></i></h5>
+                            <h5 class="card-heading">${panel.name} <i class="fas fa-caret-down fa-pull-right" data-toggle="collapse" data-target="#${htmlName}"
+                                   ></i></h5>
                         </div>
                         <div class="collapse show card-body" id="${htmlName}">
                             <iframe frameborder="0" class="module-panel" scrolling="no" src="http://localhost:3001/modules/${panel.file}" id="${htmlName}-frame">
@@ -224,6 +223,29 @@
                     </div>`
                 console.log(htmlName + " has been added");
             });
+            document.querySelectorAll('.col').forEach((col) => {
+                col.addEventListener('drop', (e) => {
+                    if(edit && e.target.classList.contains("col")){
+                        e.preventDefault();
+                        var data = e.dataTransfer.getData("text");
+                        e.target.appendChild(document.getElementById(data));
+                    }
+                })
+                col.addEventListener('dragover', (e) => {
+                    if(edit && e.target.classList.contains("col")){
+                        e.preventDefault();
+                    }
+                })
+            })
+            document.querySelectorAll('.card').forEach((card) => {
+                card.addEventListener('dragstart', (event) => {
+                    if(edit){
+                        event.dataTransfer.setData('text', event.target.id); 
+                    }else{
+                        event.preventDefault();
+                    }
+                })
+            })
             document.querySelectorAll('.module-panel').forEach((panel) => {
                 promises.push(new Promise((res, rej) => {
                     panel.addEventListener("load", () => {
@@ -238,8 +260,8 @@
                                     link);
                             }
                         }
-                        panel.style = "height: " + panel.contentDocument
-                            .body.offsetHeight + "px";
+                        panel.style = "height: " + (panel.contentDocument
+                            .body.offsetHeight + 50) + "px";
                         const style = document.createElement("style");
                         style.innerHTML =
                             `body {background-color: rgba(0, 0, 0, 0);}`
