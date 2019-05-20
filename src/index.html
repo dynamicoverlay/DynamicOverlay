@@ -108,7 +108,7 @@
             socket.on('loadGraphics', async (graphics) => {
                 document.getElementById("container").innerHTML = "";
                 let promises = [];
-                await graphics.forEach((graphic) => {
+                graphics.forEach((graphic) => {
                     let htmlName = graphic.name.toLowerCase().replace(/\s/g, '-');
                     let iFrame = document.createElement('iframe');
                     iFrame.src = `http://localhost:3001/modules/${graphic.file}`;
@@ -118,11 +118,10 @@
                     iFrame.classList.add("module-graphic");
                     document.getElementById("container").append(iFrame);
                     promises.push(new Promise((res, rej) => {
-
                         iFrame.addEventListener('load', () => {
                             const style = document.createElement("style");
                             style.innerHTML =
-                                `body {background-color: rgba(0, 0, 0, 0);}`
+                                `body {background-color: rgba(0, 0, 0, 0); overflow: hidden;}`
                             iFrame.contentDocument.body.appendChild(style)
                             const script = document.createElement("script");
                             script.type = "text/javascript";
