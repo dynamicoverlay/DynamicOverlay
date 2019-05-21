@@ -243,5 +243,8 @@ module.exports = {
     },
     toggleEditMode: () => {
         io.emit("toggleEditMode");
+    },
+    toggleSettingsMenu: () => {
+        io.emit("toggleSettings");
     }
 }

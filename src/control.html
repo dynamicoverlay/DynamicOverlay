@@ -193,6 +193,25 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="exampleModalLabel">Settings</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <button class="btn btn-primary" id="theme">Dark Mode</button>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
     <script src="/assets/jquery-3.2.1.min.js" crossorigin="anonymous">
     </script>
     <script src="/assets/bootstrap.min.js" crossorigin="anonymous">
@@ -207,6 +226,19 @@
         socket.on('connect', () => {
             socket.emit('ready', 'panel');
         });
+        document.getElementById('theme').addEventListener('click', (e) => {
+            if (dark) {
+                dark = false;
+                e.target.innerHTML = "Dark Mode"
+                document.getElementById("dark").href = "";
+                document.body.classList.add("light");
+            } else {
+                dark = true;
+                e.target.innerHTML = "Light Mode"
+                document.getElementById("dark").href = "/assets/dark.min.css";
+                document.body.classList.remove("light");
+            }
+        })
         socket.on('loadPanels', async (panels) => {
             let promises = [];
             panels.forEach((panel) => {
@@ -278,6 +310,9 @@
             await Promise.all(promises)
             socket.emit('sendState');
         });
+        socket.on('toggleSettings', () => {
+            $('#settingsModal').modal('toggle');
+        })
         socket.on('spotifyAuth', () => {
             document.querySelectorAll("iframe").forEach((iframe) => {
                 iframe.contentWindow.postMessage({
@@ -400,42 +435,20 @@
             if (e.data.message === "sendSocket") {
                 let messageToSend = e.data.value;
                 socket.emit(messageToSend.message, messageToSend.value);
-            } else if(e.data.message === "openWindow"){
+            } else if (e.data.message === "openWindow") {
                 openWindow = window.open(e.data.value);
-            } else if(e.data.message === "closeWindow"){
-                if(openWindow !== null){
+            } else if (e.data.message === "closeWindow") {
+                if (openWindow !== null) {
                     openWindow.close();
                     openWindow = null;
                 }
             }
         })
-        socket.on('toggleDarkMode', () => {
-            if (dark) {
-                dark = false;
-                document.getElementById("dark").href = "";
-                document.body.classList.add("light");
-            } else {
-                dark = true;
-                document.getElementById("dark").href = "/assets/dark.min.css";
-                document.body.classList.remove("light");
-            }
-        })
         socket.on('toggleEditMode', () => {
             if (edit) {
-                swappable.destroy();
                 edit = false;
             } else {
                 edit = true;
-                swappable = new Draggable.Sortable(
-                    document.querySelectorAll('.col'), {
-                        draggable: '.card',
-                        cancel: ".fas",
-                        delay: 0,
-                        mirror: {
-                            appendTo: '.card, .col'
-                        }
-                    }
-                );
             }
         })
     </script>

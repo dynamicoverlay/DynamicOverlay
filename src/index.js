@@ -1,3 +1,4 @@
+
 const {
     app,
     BrowserWindow,
@@ -56,7 +57,19 @@ function createWindow() {
                 click: () => {
                     shell.openItem(path.join(userPath, 'modules'))
                 }
-            }
+            },
+            {
+                label: 'Reload',
+                accelerator: 'CmdOrCtrl+R',
+                click (item, focusedWindow) {
+                  if (focusedWindow) focusedWindow.reload()
+                }
+            },{
+                label: 'Toggle Dev Tools',
+                click (item, focusedWindow) {
+                  if (focusedWindow) focusedWindow.toggleDevTools()
+                }
+            },
         ]
     },{
         label: 'Settings',
@@ -76,17 +89,12 @@ function createWindow() {
                 }
             },
             {
-                label: 'Reload',
-                accelerator: 'CmdOrCtrl+R',
-                click (item, focusedWindow) {
-                  if (focusedWindow) focusedWindow.reload()
+                label: 'Settings Menu',
+                role: 'settings',
+                click: () => {
+                    mainApp.toggleSettingsMenu();
                 }
-            },{
-                label: 'Toggle Dev Tools',
-                click (item, focusedWindow) {
-                  if (focusedWindow) focusedWindow.toggleDevTools()
-                }
-            },
+            }
         ]
     }])
     Menu.setApplicationMenu(menu)
