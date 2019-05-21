@@ -178,7 +178,7 @@ io.on('connection', function (socket) {
             actions: currentState.macros.recordedActions
         }
         let normalName =  name.toLowerCase().replace(/\s/g, "_");
-        fs.writeFile(`macros/${normalName}.json`, JSON.stringify(macro), () => {
+        fs.writeFile(path.join(userPath, `macros/${normalName}.json`), JSON.stringify(macro), () => {
             currentState.macros.macros.push(macro);
             currentState.macros.recordedActions = [];
             socket.emit('updateState', compileState());
@@ -205,7 +205,7 @@ io.on('connection', function (socket) {
                 return true;
             }else{
                 let normalName =  macro.name.toLowerCase().replace(/\s/g, "_");
-                fs.unlinkSync(`macros/${normalName}.json`);
+                fs.unlinkSync(path.join(userPath, `macros/${normalName}.json`));
                 return false;
             }
         })
