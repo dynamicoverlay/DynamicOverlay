@@ -43,8 +43,6 @@ if(!fs.existsSync(path.join(userPath, 'config.json'))){
 let data = fs.readFileSync(path.join(userPath, 'config.json'));
 config = JSON.parse(data);
 
-
-
 let modules = [];
 let currentState = {
     macros: {
@@ -66,6 +64,9 @@ function loadModules(){
     }
     fs.readdirSync(path.join(userPath, 'modules')).forEach((folder) => {
         let fPath = path.join(userPath, 'modules', folder);
+        if(config.moduleBlacklist && config.moduleBlacklist.indexOf(folder) !== -1){
+            return;
+        }
         if(!fs.lstatSync(fPath).isFile()){
             let newModule = require(fPath);
             newModule.create(registry, app, io, config, initialState[newModule.getName()] ? initialState[newModule.getName()] : undefined, sendUpdate);
@@ -91,71 +92,7 @@ currentState.macros.macros = [];
 loadModules();
 loadMacros();
 
-
-// let currentState = {
-//     scale: 300,
-//     position: "bottom_left",
-//     visible: false,
-//     backdrop: {
-//         visible: true,
-//         text: "Starting Soon"
-//     },
-//     spotify: {
-//         song: "",
-//         artist: "",
-//         volume: 0,
-//         token: ""
-//     },
-//     events: [],
-//     recording: false,
-//     macros: [],
-//     recordedActions: []
-// }
-
 var spotifyInterval = -1;
-
-// function spotifyCheck(){
-//     spotifyApi.getMyCurrentPlaybackState({
-//     })
-//     .then(function(data) {
-//         let spotify = currentState.spotify;
-//         spotify.volume = data.body.device.volume_percent;
-//         spotify.song = data.body.item.name;
-//         spotify.image = data.body.item.album.images[0].url;
-//         let artistList = "";
-//         data.body.item.artists.forEach((artist) => {
-//             artistList += artist.name + ", ";
-//         });
-//         spotify.artist = artistList;
-//         currentState.spotify = spotify;
-//         io.emit('updateState', currentState);
-//     }, function(err) {
-//         if(err.statusCode === 401){
-//             io.emit("spotifyAuth");
-//             clearInterval(spotifyInterval);
-//         }
-//       console.log('Something went wrong!', err);
-//     });
-// }
-
-
-
-// function fade(start, end){
-//     let newVol = start > end ? Math.max(end, start - 10) : Math.min(end, start + 10);
-//     if(start === end){
-//         return;
-//     }
-//     setTimeout(() => {
-//         spotifyApi.setVolume(newVol).then(() => {
-//             if(newVol !== end){
-//                 fade(newVol, end);
-//             }
-//             currentState.spotify.volume = newVol;
-//         }, () => {
-
-//         });
-//     }, 500);
-// }
 
 // var lastFollowerCheck = new Date().getTime();
 
