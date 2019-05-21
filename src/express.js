@@ -1,12 +1,13 @@
 const path = require('path');
 const fs = require('fs');
 const electron = require('electron');
-const axios = require('axios');
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-var server = require('http').Server(app);
-var io = require('socket.io')(server);
+const server = require('http').Server(app);
+const io = require('socket.io')(server);
+
+
 
 app.use(bodyParser.json());
 const userPath = (electron.app || electron.remote.app).getPath('userData');
@@ -14,6 +15,8 @@ const userPath = (electron.app || electron.remote.app).getPath('userData');
 let panels = [];
 let graphics = [];
 let messageHandlers = {};
+let settingsOptions = {};
+let eventListeners = [];
 
 let registry = {
     registerPanel: (file, name) => {
@@ -29,14 +32,55 @@ let registry = {
         if(config[name] === undefined){
             config[name] = defaultValues;
         }
+    },
+    registerSettingsOption: (moduleName, name, type, defaultValue, options, onChangeHandler) => {
+        if(settingsOptions[moduleName] === undefined){
+            settingsOptions[moduleName] = [];
+        }
+        settingsOptions[moduleName].push({
+            id: name.toLowerCase().replace(/\s/g, "_"),
+            name,
+            type,
+            defaultValue,
+            options,
+            onChangeHandler
+        });
+    },
+    updateConfig: (moduleName, newConfig) => {
+        config[moduleName] = newConfig;
+        emitEvent('configUpdate', config);
+    },
+    getConfig: (moduleName) => {
+        return config[moduleName];
+    },
+    registerEventListener: (event, handler) => {
+        eventListeners.push({event, handler});
     }
 }
+
+const emitEvent = (eventName, data) => {
+    eventListeners.filter((a) => a.event === eventName).forEach((handler) => {
+        handler.handler(data);
+    })
+} 
 
 const sendUpdate = () => {
     io.emit("updateState", compileState());
 }
 
 let config = {};
+const debugLog = (...message) => {
+    if(config.debug){
+        console.log(`[DEBUG]`, ...message);
+    }
+}
+registry.registerSettingsOption('core', 'Debug Mode', 'CHECKBOX', 'false', {}, (val) => {
+    config.debug = val;
+});
+registry.registerSettingsOption('core', 'Dark Mode', 'CHECKBOX', 'false', {}, (val) => {
+    config.dark = val;
+    io.emit('setDarkMode', val);
+});
 if(!fs.existsSync(path.join(userPath, 'config.json'))){
     fs.writeFileSync(path.join(userPath, 'config.json'), JSON.stringify(config));
 }
@@ -70,7 +114,7 @@ function loadModules(){
         if(!fs.lstatSync(fPath).isFile()){
             let newModule = require(fPath);
             newModule.create(registry, app, io, config, initialState[newModule.getName()] ? initialState[newModule.getName()] : undefined, sendUpdate);
-            console.log("Loading Module " + newModule.getName());
+            debugLog("Loading Module " + newModule.getName());
             modules.push(newModule);
         }
     });
@@ -92,36 +136,6 @@ currentState.macros.macros = [];
 loadModules();
 loadMacros();
 
-var spotifyInterval = -1;
-
-// var lastFollowerCheck = new Date().getTime();
-
-// let followURL = `https://api.twitch.tv/kraken/channels/rushmead/follows?client_id=${config.twitch.client_id}`;
-// function getFollowers(){
-//     let newFollowers = [];
-//     console.log("Checking followers");
-//     axios.get(followURL).then((data) => {
-//         let actualData = data.data;
-//         if(actualData.follows){
-//             actualData.follows.forEach((follow) => {
-//                 if(+moment(follow.created_at) > lastFollowerCheck){
-//                     newFollowers.push(follow);
-//                 }
-//             })
-//             if(newFollowers.length > 0){
-//                 newFollowers.forEach((follow) => {
-//                     let event = {type: "follow", created_at: follow.created_at, username: follow.user.display_name};
-//                     io.emit("newEvent", event);
-//                     currentState.events.push(event);
-//                 })
-//             }
-//             lastFollowerCheck = new Date().getTime();
-//         }
-//     })
-// }
-
-// setInterval(getFollowers, 20 * 1000);
-
 function compileState(){
     let state = {...currentState};
     modules.forEach((mModule) => {
@@ -142,21 +156,23 @@ function handleAction(data){
     }
 }
 
-let recordedActions = [];
-
 io.on('connection', function (socket) {
     socket.on('ready', (type) => {
-        console.log("Client connected with type " +type)
+        debugLog("Client connected with type " +type)
         if(type === "panel"){
+            socket.emit('setDarkMode', config.dark);
             socket.emit('loadPanels', panels);
         }else if(type === "view"){
             socket.emit('loadGraphics', graphics);
         }
     });
     socket.on('sendState', () => {
-        console.log("Sending state!");
+        debugLog("Sending state!");
         socket.emit('updateState', compileState());
     });
+    socket.on('sendSettings', () => {
+        socket.emit('loadSettings', settingsOptions);
+    })
     socket.on('doAction', function (data) {
         if(!currentState.macros.recording){
             handleAction(data);
@@ -164,6 +180,18 @@ io.on('connection', function (socket) {
             currentState.macros.recordedActions.push(data);
             io.emit('updateState', compileState());
         }
+    });
+    socket.on('saveSettings', (settings) => {
+        debugLog("Saving Settings", JSON.stringify(settings));
+        Object.keys(settings).forEach((mod) => {
+            let modSettings = settings[mod];
+            Object.keys(modSettings).forEach((id) => {
+                let results = settingsOptions[mod].filter((a) => a.id === id);
+                if(results.length === 1){
+                    results[0].onChangeHandler(modSettings[id]);
+                }
+            })
+        })
     });
     socket.on('toggleRecord', () => {
         currentState.macros.recording = !currentState.macros.recording;
@@ -199,7 +227,7 @@ io.on('connection', function (socket) {
         loadMacros();
     })
     socket.on('deleteMacro', (name) => {
-        console.log("Deleting Macro", name);
+        debugLog("Deleting Macro", name);
         currentState.macros.macros = currentState.macros.macros.filter((macro) => {
             if(macro.name !== name){
                 return true;
@@ -237,9 +265,7 @@ server.listen(3001);
 module.exports = {
     save: () => {
         fs.writeFileSync(path.join(userPath, 'state.json'), JSON.stringify(compileState()));
-    },
-    toggleDarkMode: () => {
-        io.emit("toggleDarkMode");
+        fs.writeFileSync(path.join(userPath, 'config.json'), JSON.stringify(config));
     },
     toggleEditMode: () => {
         io.emit("toggleEditMode");

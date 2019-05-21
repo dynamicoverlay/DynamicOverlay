@@ -75,13 +75,6 @@ function createWindow() {
         label: 'Settings',
         submenu: [
             {
-                label: 'Toggle Dark mode',
-                role: 'dark',
-                click: () => {
-                    mainApp.toggleDarkMode();
-                }
-            },
-            {
                 label: 'Toggle Edit mode',
                 role: 'edit',
                 click: () => {
