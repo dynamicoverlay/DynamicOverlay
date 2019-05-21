@@ -212,13 +212,20 @@ io.on('connection', function (socket) {
         io.emit('updateState', compileState());
     })
 });
+
+app.post('/macro/:id', async (req, res) => {
+    var macro = currentState.macros.macros.find((mac) => mac.name.toLowerCase().replace(/\s/g, "_") === req.params.id);
+    for(var i = 0; i < macro.actions.length; i++){
+        await handleAction(macro.actions[i]);
+    }
+    res.json({success: true});
+})
 app.use('/assets', express.static(path.join(__dirname, 'assets')))
 app.use('/modules', express.static(path.join(userPath, 'modules')))
 app.get('/ws', (req, res) => {
     io.emit(req.query.name);
     res.send({ok: true});
 })
-
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'control.html'));
 })
