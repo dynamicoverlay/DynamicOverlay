@@ -26,7 +26,14 @@ let registry = {
         messageHandlers[message] = handler;
     },
     registerGraphic: (file, name) => {
-        graphics.push({name, file});
+        let graphic = {name, file};
+        graphics.push(graphic);
+        let index = graphics.indexOf(graphic);
+        config.layers[name] = index;
+        registry.registerSettingsOption('core', name + ' layer position', 'TEXT', index, {type: "number"}, (val) => {
+            config.layers[name] = Number(val);
+            io.emit('updateGraphics', config.layers);
+        });
     },
     registerConfig: (name, defaultValues) => {
         if(config[name] === undefined){
@@ -68,25 +75,36 @@ const sendUpdate = () => {
     io.emit("updateState", compileState());
 }
 
-let config = {};
+let config = {
+    layers: {},
+    xSize: 1920,
+    ySize: 1080
+};
 const debugLog = (...message) => {
     if(config.debug){
         console.log(`[DEBUG]`, ...message);
     }
 }
-registry.registerSettingsOption('core', 'Debug Mode', 'CHECKBOX', 'false', {}, (val) => {
-    config.debug = val;
-});
-registry.registerSettingsOption('core', 'Dark Mode', 'CHECKBOX', 'false', {}, (val) => {
-    config.dark = val;
-    io.emit('setDarkMode', val);
-});
 if(!fs.existsSync(path.join(userPath, 'config.json'))){
     fs.writeFileSync(path.join(userPath, 'config.json'), JSON.stringify(config));
 }
 let data = fs.readFileSync(path.join(userPath, 'config.json'));
-config = JSON.parse(data);
+data = JSON.parse(data)
+config = {...data, ...config}
 
+registry.registerSettingsOption('core', 'Debug Mode', 'CHECKBOX', config.debug, {}, (val) => {
+    config.debug = val;
+});
+registry.registerSettingsOption('core', 'Dark Mode', 'CHECKBOX', config.dark, {}, (val) => {
+    config.dark = val;
+    io.emit('setDarkMode', val);
+});
+registry.registerSettingsOption('core', 'X Size', 'TEXT', config.xSize, {type: "number"}, (val) => {
+    config.xSize = Number(val);
+});
+registry.registerSettingsOption('core', 'Y Size', 'TEXT', config.ySize, {type: "number"}, (val) => {
+    config.ySize = Number(val);
+});
 let modules = [];
 let currentState = {
     macros: {
@@ -100,6 +118,7 @@ let initialState = {};
 
 if(fs.existsSync(path.join(userPath, 'state.json'))){
     initialState =  JSON.parse(fs.readFileSync(path.join(userPath, 'state.json')));
+    currentState.panels = initialState.panels;
 }
 
 function loadModules(){
@@ -161,9 +180,23 @@ io.on('connection', function (socket) {
         debugLog("Client connected with type " +type)
         if(type === "panel"){
             socket.emit('setDarkMode', config.dark);
-            socket.emit('loadPanels', panels);
+            let locationPanels = panels.map((panel) => {
+                let normalName = panel.name.toLowerCase().replace(/[\s-]/g, "_");
+                if(currentState.panels[normalName]){
+                    panel.location = currentState.panels[normalName];   
+                }else {
+                    panel.location = 'startCol';
+                }
+                return panel;
+            })
+            socket.emit('loadPanels', locationPanels);
         }else if(type === "view"){
-            socket.emit('loadGraphics', graphics);
+            let layeredGraphics = graphics.map((graphic) => {
+                graphic.layer = config.layers[graphic.name];
+                return graphic;
+            })
+            socket.emit('loadGraphics', layeredGraphics);
+            socket.emit('setScale', {xSize: config.xSize, ySize: config.ySize});
         }
     });
     socket.on('sendState', () => {
@@ -238,6 +271,9 @@ io.on('connection', function (socket) {
             }
         })
         io.emit('updateState', compileState());
+    })
+    socket.on('movePanel', (panelName, newLocation) => {
+        currentState.panels[panelName.toLowerCase().replace(/[\s-]/g, "_")] = newLocation;
     })
 });
 
