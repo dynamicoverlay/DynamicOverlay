@@ -7,8 +7,6 @@ const bodyParser = require('body-parser');
 const server = require('http').Server(app);
 const io = require('socket.io')(server);
 
-
-
 app.use(bodyParser.json());
 const userPath = (electron.app || electron.remote.app).getPath('userData');
 
@@ -119,6 +117,10 @@ let initialState = {};
 if(fs.existsSync(path.join(userPath, 'state.json'))){
     initialState =  JSON.parse(fs.readFileSync(path.join(userPath, 'state.json')));
     currentState.panels = initialState.panels;
+}
+
+if(currentState.panels === undefined){
+    currentState.panels = {};
 }
 
 function loadModules(){

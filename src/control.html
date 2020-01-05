@@ -268,7 +268,6 @@
                                 `<div class="form-group"><label for="${module}-${option.id}">${option.name}</label><input class="module-setting form-control" id="${module}-${option.id}" type="${inputType}" value="${defaultValue}" /></div>`
                             break;
                         case "CHECKBOX":
-                            console.log(option);
                             moduleHTML += `<div class="form-check">
                             <input class="module-setting form-check-input" id="${module}-${option.id}" type="checkbox" ${option.defaultValue === true ? 'checked' : ''} />
                             <label class="form-check-label" for="${module}-${option.id}">${option.name}</label>
@@ -287,6 +286,9 @@
                                 ${optionHTML}
                             </select>
                             </div>`
+                            break;
+                        case "BUTTON":
+                            moduleHTML += `<button class="btn btn-primary" id="${module}-${option.id}" onclick="socket.emit(${option.options.message})">${option.name}</button>`
                             break;
                     }
                 });
